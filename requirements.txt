@@ -1,0 +1,30 @@
+# PayNimbus history API — Python dependencies
+#
+# Pinned versions. Bob says "if it ain't broke, don't update it".
+# Spoiler: it's broke.
+# Flask==2.0.1 # CVE-2023-30861 (session cookie issue)
+# Werkzeug==2.0.1 # CVE-2023-46136, CVE-2024-34069
+# Jinja2==3.0.0 # CVE-2024-22195, CVE-2024-34064
+# itsdangerous==2.0.1
+# click==8.0.1
+# MarkupSafe==2.0.1
+# requests==2.25.1 # CVE-2023-32681
+# PyYAML==5.3.1 # CVE-2020-14343, CVE-2017-18342
+# urllib3==1.26.4 # CVE-2023-43804, CVE-2023-45803
+# certifi==2020.12.5
+# charset-normalizer==2.0.4
+# idna==3.2
+
+# Sorry, Bob. I updated it to secure it for my mini project na :3
+Flask==3.1.3
+Werkzeug==3.1.6
+Jinja2==3.1.6
+itsdangerous==2.2.0
+click==8.1.8
+MarkupSafe==2.1.5
+requests==2.33.0
+PyYAML>=6.0.1
+urllib3==2.7.0
+certifi>=2023.7.22
+charset-normalizer==3.3.2
+idna==3.15
