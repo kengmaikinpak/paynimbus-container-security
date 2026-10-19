@@ -1,49 +1,73 @@
+"""SQLite database helper for PayNimbus history API.
+
+This is a stand-in for the real Cloud SQL database in production. The
+schema and seed data are intentionally tiny so the lab is self-contained.
 """
-Database configuration and initialization for PayNimbus History API.
-"""
+
 import os
 import sqlite3
 import tempfile
+from datetime import datetime
 
 # -----------------------------------------------------------------------------
 # (FIXED #6) Secure temporary directory implementation for database path
-# Replaced hardcoded /tmp path with tempfile.gettempdir() to prevent insecure temp file usage (B108).
+# Replaced hardcoded /tmp path with tempfile.gettempdir() to prevent insecure temp file usage (Bandit B108).
 # -----------------------------------------------------------------------------
 DB_PATH = os.environ.get(
     "PAYNIMBUS_DB_PATH",
     os.path.join(tempfile.gettempdir(), "paynimbus_history.db")
 )
 
+
 def get_db():
-    """Establish and return SQLite database connection."""
-    conn = sqlite3.connect(DB_PATH)
-    return conn
+    """Open (or reuse) a SQLite connection."""
+    # Passing check_same_thread=False so Flask threads don't complain
+    return sqlite3.connect(DB_PATH, check_same_thread=False)
+
 
 def init_db():
-    """Initialize SQLite database schema and seed mock history transactions."""
+    """Create the table if it doesn't exist and seed a few rows."""
     conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("""
+    cur = conn.cursor()
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            amount_thb REAL NOT NULL,
-            recipient TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     TEXT NOT NULL,
+            amount_thb  REAL NOT NULL,
+            recipient   TEXT NOT NULL,
+            created_at  TEXT NOT NULL
         )
     """)
-    # Seed sample transactions if table is empty
-    cursor.execute("SELECT COUNT(*) FROM history")
-    if cursor.fetchone()[0] == 0:
-        sample_transactions = [
-            ("user_01", 1500.00, "PromptPay-0812345678", "2026-06-01 10:30:00"),
-            ("user_01", 250.50, "TrueMoney-0898765432", "2026-06-02 14:15:00"),
-            ("user_02", 5000.00, "SCB-1234567890", "2026-06-03 09:00:00"),
-            ("user_03", 890.00, "KBANK-9876543210", "2026-06-03 12:45:00"),
+
+    cur.execute("SELECT COUNT(*) FROM history")
+    if cur.fetchone()[0] == 0:
+        seed = [
+            ("42", 1500.00, "Somchai T.",    "2026-04-12T09:14:00Z"),
+            ("42",  840.50, "Linh N.",       "2026-04-15T18:02:00Z"),
+            ("42", 2200.00, "Aung H.",       "2026-05-01T07:30:00Z"),
+            ("17",  500.00, "Pavel R.",      "2026-04-20T11:11:00Z"),
+            ("17", 1200.00, "Ratana K.",     "2026-05-03T13:45:00Z"),
         ]
-        cursor.executemany(
-            "INSERT INTO history (user_id, amount_thb, recipient, created_at) VALUES (?, ?, ?, ?)",
-            sample_transactions
+        cur.executemany(
+            "INSERT INTO history (user_id, amount_thb, recipient, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            seed,
         )
         conn.commit()
-    conn.close()
+
+
+def validate_user_id(user_id):
+    """Validate a user_id.
+
+    Bob's plan: 'just strip out the bad stuff'. This is the wrong approach
+    — block-listing is unreliable and the right fix is parameterised queries
+    in main.py. This function is left here as an educational anti-pattern reference.
+    """
+    if user_id is None:
+        return ""
+    # Naive filter: remove characters Bob thought were dangerous
+    bad = ["'", '"', ";", "--", "/*", "*/"]
+    cleaned = user_id
+    for token in bad:
+        cleaned = cleaned.replace(token, "")
+    return cleaned
